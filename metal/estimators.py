@@ -5,7 +5,7 @@ from Bio import SeqIO
 from scipy.spatial.distance import pdist, squareform
 from tqdm import tqdm
 import dendropy
-
+from covariance_matrix import compute_covariance_matrix
 
 def sequences_from_fasta(fasta_filepath):
     """
@@ -169,4 +169,21 @@ def metal_bootstrap_estimators(fasta_filepath, n_bootstraps, output_filepath="./
     sequences = sequences_from_fasta(fasta_filepath)
     dist_matrices = bootstrap_hamming_distances(sequences, n_bootstraps)
     boot_trees = [get_tree_from_dissimilarities(dist_matrix) for dist_matrix in dist_matrices]
+    save_trees(boot_trees, output_filepath)
+
+def  multivariate_normal_bootstrap_estimators(fasta_filepath, n_bootstraps, output_filepath="./boot_trees_mvt.tre", **kwargs):
+    sequences = sequences_from_fasta(fasta_filepath)
+    dist_matrix = hamming_distance_from_sequences(sequences)
+    metal_tree = get_tree_from_dissimilarities(dist_matrix)
+    sigma, leaf_pairs, _ = compute_covariance_matrix(dist_matrix,**kwargs)
+    mu = np.array([dist_matrix[*pair] for pair in leaf_pairs])   
+    mvt_samples = np.random.multivariate_normal(mean = mu, cov = sigma, size=n_bootstraps)
+    def vector_to_matrix(v):
+        N = dist_matrix.shape[0]
+        mat = np.zeros( (N,N) )
+        triu_i, triu_j = np.triu_indices(N, k=1)
+        mat[triu_i, triu_j] = v
+        mat[triu_j, triu_i] = v  
+        return mat
+    boot_trees = [get_tree_from_dissimilarities(vector_to_matrix(sample)) for sample in mvt_samples]
     save_trees(boot_trees, output_filepath)
