@@ -1,5 +1,5 @@
-from tree_sims import generate_species_tree, generate_gene_tree_from_species_tree
-from dna_seq_generation import generate_concatenated_fasta_file_from_gene_trees
+from data_generation.tree_sims import generate_species_tree, generate_gene_tree_from_species_tree
+from data_generation.dna_seq_generation import generate_concatenated_fasta_file_from_gene_trees
 import random
 import dendropy
 import os 
