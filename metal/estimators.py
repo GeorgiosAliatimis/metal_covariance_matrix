@@ -1,11 +1,11 @@
 import os
 import warnings
 import numpy as np
-from Bio import SeqIO
+from Bio import SeqIO, Phylo
 from scipy.spatial.distance import pdist, squareform
 from tqdm import tqdm
 import dendropy
-from covariance_matrix import compute_covariance_matrix
+from .covariance_matrix import compute_covariance_matrix
 
 def sequences_from_fasta(fasta_filepath):
     """
@@ -151,6 +151,7 @@ def metal_estimator(fasta_filepath, output_filepath="./best_tree_metal.tre"):
     dist_matrix = hamming_distance_from_sequences(sequences)
     metal_tree = get_tree_from_dissimilarities(dist_matrix)
     save_trees([metal_tree], output_filepath)
+    return metal_tree, dist_matrix
 
 
 def metal_bootstrap_estimators(fasta_filepath, n_bootstraps, output_filepath="./boot_trees_metal.tre"):
@@ -171,15 +172,16 @@ def metal_bootstrap_estimators(fasta_filepath, n_bootstraps, output_filepath="./
     boot_trees = [get_tree_from_dissimilarities(dist_matrix) for dist_matrix in dist_matrices]
     save_trees(boot_trees, output_filepath)
 
-def  multivariate_normal_bootstrap_estimators(fasta_filepath, n_bootstraps, output_filepath="./boot_trees_mvt.tre", **kwargs):
-    sequences = sequences_from_fasta(fasta_filepath)
-    dist_matrix = hamming_distance_from_sequences(sequences)
-    metal_tree = get_tree_from_dissimilarities(dist_matrix)
-    sigma, leaf_pairs, _ = compute_covariance_matrix(dist_matrix,**kwargs)
-    mu = np.array([dist_matrix[*pair] for pair in leaf_pairs])   
+def multivariate_normal_bootstrap_estimators(fasta_filepath, n_bootstraps, output_filepath="./boot_trees_mvt.tre", **kwargs):
+    tmp_filename = "./tmp_tree.tre"
+    _, dist_matrix = metal_estimator(fasta_filepath, output_filepath=tmp_filename)
+    N = dist_matrix.shape[0]
+    metal_tree = Phylo.read(tmp_filename, "newick")
+    os.remove(tmp_filename)
+    sigma, _, _ = compute_covariance_matrix(metal_tree, **kwargs)
+    mu = dist_matrix[np.triu_indices(N, k=1)]
     mvt_samples = np.random.multivariate_normal(mean = mu, cov = sigma, size=n_bootstraps)
     def vector_to_matrix(v):
-        N = dist_matrix.shape[0]
         mat = np.zeros( (N,N) )
         triu_i, triu_j = np.triu_indices(N, k=1)
         mat[triu_i, triu_j] = v
