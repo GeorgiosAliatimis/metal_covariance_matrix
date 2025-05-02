@@ -63,7 +63,7 @@ def generate_species_tree(ntax=10, normalize=True, tree_depth=1, rng=None):
     Returns:
         dendropy.Tree: A species tree with `ntax` tips.
     """
-    labels = [chr(ord('a') + i) for i in range(num_taxa)]
+    labels = [chr(ord('a') + i) for i in range(ntax)]
     taxa = dendropy.TaxonNamespace(labels)
 
     # Simulate a Yule tree
