@@ -5,11 +5,12 @@ from Bio import SeqIO, Phylo
 from scipy.spatial.distance import pdist, squareform
 from tqdm import tqdm
 import dendropy
+import tempfile
 from .covariance_matrix import compute_covariance_matrix
 
 def sequences_from_fasta(fasta_filepath):
     """
-    Reads sequences from a FASTA file.
+    Reads sequences from a FASTA file and verifies they are all the same length.
 
     Parameters
     ----------
@@ -19,107 +20,124 @@ def sequences_from_fasta(fasta_filepath):
     Returns
     -------
     dict
-        A dictionary mapping sequence IDs to sequences as strings.
+        Dictionary mapping sequence IDs to sequence strings.
+
+    Raises
+    ------
+    ValueError
+        If sequences are not all the same length.
     """
     sequences = {}
+    lengths = set()
     for record in SeqIO.parse(fasta_filepath, "fasta"):
-        sequences[record.id.strip()] = str(record.seq)
+        seq = str(record.seq)
+        sequences[record.id.strip()] = seq
+        lengths.add(len(seq))
+
+    if len(lengths) != 1:
+        raise ValueError("Not all sequences are the same length.")
+
     return sequences
 
 
 def hamming_distance_from_sequences(sequences):
     """
-    Computes the Hamming distance matrix for a dictionary of aligned sequences.
+    Computes the normalized Hamming distance matrix from aligned sequences.
 
     Parameters
     ----------
     sequences : dict
-        Dictionary mapping taxa labels to equal-length sequence strings.
+        Dictionary of {taxon: sequence} pairs.
 
     Returns
     -------
     np.ndarray
-        A square matrix of normalized Hamming distances between taxa.
+        Square matrix of normalized Hamming distances.
     """
     taxa = sorted(sequences.keys())
     seq_array = np.array([list(sequences[taxon]) for taxon in taxa])
-    dist_matrix = pdist(seq_array, metric=lambda x, y: np.mean(x != y))
+    seq_array = seq_array.astype('<U1')  # ensure string dtype for comparisons
+    dist_matrix = pdist(seq_array, metric=lambda x, y: np.mean(np.array(x) != np.array(y)))
     return squareform(dist_matrix)
 
 
 def bootstrap_hamming_distances(sequences, n_bootstraps):
     """
-    Computes bootstrap replicate Hamming distance matrices.
+    Bootstraps Hamming distance matrices by resampling sequence columns.
 
     Parameters
     ----------
     sequences : dict
-        Dictionary mapping taxa labels to equal-length sequence strings.
+        Dictionary of aligned sequences.
     n_bootstraps : int
-        Number of bootstrap replicates to compute.
+        Number of bootstrap replicates.
 
     Returns
     -------
     np.ndarray
-        Array of shape (n_bootstraps, N, N) where N is number of taxa.
+        Array of shape (n_bootstraps, N, N) containing distance matrices.
     """
     taxa = sorted(sequences.keys())
     seq_array = np.array([list(sequences[taxon]) for taxon in taxa])
+    seq_array = seq_array.astype('<U1')
     n, C = seq_array.shape
     dist_matrix = np.zeros((n_bootstraps, n, n))
 
     for i in tqdm(range(n_bootstraps), desc="Bootstrapping"):
         col_indices = np.random.choice(C, size=C, replace=True)
-        D = pdist(seq_array[:, col_indices], metric=lambda x, y: np.mean(x != y))
+        D = pdist(seq_array[:, col_indices], metric=lambda x, y: np.mean(np.array(x) != np.array(y)))
         dist_matrix[i, :, :] = squareform(D)
 
     return dist_matrix
 
 
-def get_tree_from_dissimilarities(dist_matrix):
+def get_tree_from_dissimilarities(dist_matrix, labels=None):
     """
-    Constructs a UPGMA tree from a given dissimilarity matrix.
+    Constructs a UPGMA tree from a distance matrix using DendroPy.
 
     Parameters
     ----------
     dist_matrix : np.ndarray
-        Square matrix of distances between taxa.
+        Square distance matrix.
+    labels : list, optional
+        Taxa labels corresponding to rows/columns.
 
     Returns
     -------
     dendropy.Tree
-        A phylogenetic tree inferred using UPGMA.
+        UPGMA tree.
     """
-    num_taxa = dist_matrix.shape[0]
-    taxa_labels = [chr(ord('a') + i) for i in range(num_taxa)]
-    taxa = dendropy.TaxonNamespace(taxa_labels)
+    N = dist_matrix.shape[0]
+    if labels is None:
+        labels = [chr(ord('a') + i) for i in range(N)]
 
-    tmp_file_name = "tmp.csv"
-    np.savetxt(tmp_file_name, dist_matrix, delimiter=",")
-    
-    with open(tmp_file_name) as src:
+    taxa = dendropy.TaxonNamespace(labels)
+
+    with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp:
+        np.savetxt(tmp.name, dist_matrix, delimiter=",")
+        tmp.seek(0)
         pdm = dendropy.PhylogeneticDistanceMatrix.from_csv(
-            src,
+            tmp,
             taxon_namespace=taxa,
             is_first_row_column_names=False,
             is_first_column_row_names=False,
             is_allow_new_taxa=True,
-            delimiter=",",
+            delimiter=","
         )
-    os.remove(tmp_file_name)
+    os.remove(tmp.name)
     return pdm.upgma_tree()
 
 
 def save_trees(trees, output_filepath="./trees.tre"):
     """
-    Saves a list of trees to a file in the appropriate format.
+    Saves a list of DendroPy trees to a file.
 
     Parameters
     ----------
     trees : list of dendropy.Tree
-        List of phylogenetic trees to write.
+        Trees to save.
     output_filepath : str
-        Filepath where the trees will be saved.
+        Destination file path.
     """
     _, ext = os.path.splitext(output_filepath)
     ext = ext.lower()
@@ -143,49 +161,93 @@ def metal_estimator(fasta_filepath, output_filepath="./best_tree_metal.tre"):
     Parameters
     ----------
     fasta_filepath : str
-        Input FASTA file containing aligned sequences.
+        Path to FASTA input.
     output_filepath : str
-        File to write the resulting tree.
+        Output path for the inferred tree.
+
+    Returns
+    -------
+    dendropy.Tree
+        UPGMA-inferred tree.
+    np.ndarray
+        Pairwise distance matrix.
     """
     sequences = sequences_from_fasta(fasta_filepath)
+    labels = sorted(sequences.keys())
     dist_matrix = hamming_distance_from_sequences(sequences)
-    metal_tree = get_tree_from_dissimilarities(dist_matrix)
-    save_trees([metal_tree], output_filepath)
-    return metal_tree, dist_matrix
+    tree = get_tree_from_dissimilarities(dist_matrix, labels)
+    save_trees([tree], output_filepath)
+    return tree, dist_matrix
 
 
 def metal_bootstrap_estimators(fasta_filepath, n_bootstraps, output_filepath="./boot_trees_metal.tre"):
     """
-    Performs bootstrapping and builds multiple UPGMA trees from sequence resampling.
+    Generates bootstrap replicate trees via Hamming distance resampling.
 
     Parameters
     ----------
     fasta_filepath : str
-        Input FASTA file with aligned sequences.
+        Path to aligned FASTA sequences.
     n_bootstraps : int
-        Number of bootstrap trees to generate.
+        Number of replicates.
     output_filepath : str
-        Path to save the bootstrap trees.
+        Output path for trees.
+
+    Returns
+    -------
+    list of dendropy.Tree
+        List of bootstrap trees.
+    np.ndarray
+        Array of distance matrices (n_bootstraps, N, N).
     """
     sequences = sequences_from_fasta(fasta_filepath)
+    labels = sorted(sequences.keys())
     dist_matrices = bootstrap_hamming_distances(sequences, n_bootstraps)
-    boot_trees = [get_tree_from_dissimilarities(dist_matrix) for dist_matrix in dist_matrices]
-    save_trees(boot_trees, output_filepath)
+    trees = [get_tree_from_dissimilarities(mat, labels) for mat in dist_matrices]
+    save_trees(trees, output_filepath)
+    return trees, dist_matrices
+
 
 def multivariate_normal_bootstrap_estimators(fasta_filepath, n_bootstraps, output_filepath="./boot_trees_mvt.tre", **kwargs):
-    tmp_filename = "./tmp_tree.tre"
-    _, dist_matrix = metal_estimator(fasta_filepath, output_filepath=tmp_filename)
+    """
+    Generates trees by sampling distance matrices from a multivariate normal distribution.
+
+    Parameters
+    ----------
+    fasta_filepath : str
+        Path to aligned FASTA file.
+    n_bootstraps : int
+        Number of bootstrap replicates.
+    output_filepath : str
+        Output path for trees.
+    kwargs : dict
+        Additional arguments passed to `compute_covariance_matrix`.
+
+    Returns
+    -------
+    list of dendropy.Tree
+        Bootstrap trees generated from MVN samples.
+    np.ndarray
+        Sampled distance matrices of shape (n_bootstraps, N, N).
+    """
+    tmp_file = tempfile.NamedTemporaryFile(delete=False)
+    tmp_file.close()
+    _, dist_matrix = metal_estimator(fasta_filepath, output_filepath=tmp_file.name)
+    metal_tree = Phylo.read(tmp_file.name, "newick")
+    os.remove(tmp_file.name)
+    labels = [term.name for term in metal_tree.get_terminals()]
+
     N = dist_matrix.shape[0]
-    metal_tree = Phylo.read(tmp_filename, "newick")
-    os.remove(tmp_filename)
     sigma, _, _ = compute_covariance_matrix(metal_tree, **kwargs)
     mu = dist_matrix[np.triu_indices(N, k=1)]
-    mvt_samples = np.random.multivariate_normal(mean = mu, cov = sigma, size=n_bootstraps)
+    samples = np.random.multivariate_normal(mu, sigma, size=n_bootstraps)
+
     def vector_to_matrix(v):
-        mat = np.zeros( (N,N) )
-        triu_i, triu_j = np.triu_indices(N, k=1)
-        mat[triu_i, triu_j] = v
-        mat[triu_j, triu_i] = v  
+        mat = np.zeros((N, N))
+        i, j = np.triu_indices(N, k=1)
+        mat[i, j] = mat[j, i] = v
         return mat
-    boot_trees = [get_tree_from_dissimilarities(vector_to_matrix(sample)) for sample in mvt_samples]
-    save_trees(boot_trees, output_filepath)
+
+    trees = [get_tree_from_dissimilarities(vector_to_matrix(sample), labels) for sample in samples]
+    save_trees(trees, output_filepath)
+    return trees, samples
