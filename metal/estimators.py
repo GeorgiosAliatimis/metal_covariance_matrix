@@ -107,6 +107,12 @@ def get_tree_from_dissimilarities(dist_matrix, labels=None):
     dendropy.Tree
         UPGMA tree.
     """
+
+    #Avoid having long terminal branches
+    nonzero = dist_matrix > 0
+    min_nonzero = dist_matrix[nonzero].min()
+    dist_matrix[nonzero] -= min_nonzero
+
     N = dist_matrix.shape[0]
     if labels is None:
         labels = [chr(ord('a') + i) for i in range(N)]
