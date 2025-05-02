@@ -16,7 +16,6 @@ Dependencies:
 
 import dendropy
 from dendropy.simulate import treesim
-import string
 import numpy as np
 
 
@@ -64,7 +63,7 @@ def generate_species_tree(ntax=10, normalize=True, tree_depth=1, rng=None):
     Returns:
         dendropy.Tree: A species tree with `ntax` tips.
     """
-    labels = string.ascii_lowercase[:ntax]
+    labels = [chr(ord('a') + i) for i in range(num_taxa)]
     taxa = dendropy.TaxonNamespace(labels)
 
     # Simulate a Yule tree
