@@ -26,5 +26,5 @@ gene_trees.write(path=f"{dir_name}/gene_trees.nex", schema = "nexus")
 
 #Generate a fasta file of the concatenated sequences of gene trees
 generate_concatenated_fasta_file_from_gene_trees(trees = gene_trees, \
-                        output_filepath = f"{dir_name}/concatenated_seq_alignment.nex", \
+                        output_filepath = f"{dir_name}/concatenated_seq_alignment.fasta", \
                         seq_length = num_sites_per_gene)
