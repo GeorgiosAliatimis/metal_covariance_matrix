@@ -2,3 +2,5 @@ gene_data/
 __pycache__/
 *.egg-info/
 venv/
+*.tre
+*.nex
