@@ -11,5 +11,6 @@ setup(
         "tqdm",
         "dendropy",
         "pyvolve",
+        "matplotlib"
     ],
 )
