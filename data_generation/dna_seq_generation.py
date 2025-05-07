@@ -74,7 +74,7 @@ def generate_sequences(tree, seq_length=100, model="Jukes-Cantor", mutation_rate
     return sequences
 
 
-def generate_fasta_file_from_sequence(sequences, output_filepath="./unnamed.fasta", **kwargs):
+def generate_fasta_file_from_sequence(sequences, output_filepath="./unnamed.fasta"):
     """
     Writes a dictionary of sequences to a FASTA file.
 
@@ -97,7 +97,7 @@ def generate_fasta_file_from_gene_tree(tree, output_filepath="./unnamed.fasta", 
         **kwargs: Additional arguments passed to `generate_sequences()`.
     """
     sequences = generate_sequences(tree, **kwargs)
-    generate_fasta_file_from_sequence(sequences, output_filepath, **kwargs)
+    generate_fasta_file_from_sequence(sequences, output_filepath)
 
 
 def generate_fasta_files_from_gene_trees(trees, output_directory="fasta_files", **kwargs):
@@ -133,4 +133,4 @@ def generate_concatenated_fasta_file_from_gene_trees(trees, output_filepath="./u
 
     # Join sequences for each taxon
     final_seqs = {k: "".join(v) for k, v in concatenated_seq.items()}
-    generate_fasta_file_from_sequence(final_seqs, output_filepath, **kwargs)
+    generate_fasta_file_from_sequence(final_seqs, output_filepath)
