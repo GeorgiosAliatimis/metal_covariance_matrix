@@ -15,6 +15,8 @@ def plot_tree_with_support(tree_filepath):
     
     # Plot the tree without showing it yet
     Phylo.draw(tree, do_show=False, axes=ax)
+
+    depths = tree.depths()
     
     # Annotate the branches with support values (assuming support is stored in .confidence)
     for clade in tree.find_clades():
@@ -27,16 +29,16 @@ def plot_tree_with_support(tree_filepath):
                 x = 0  # If no branch length is available, use a default value (0 or other)
             
             # Use tree.depths() to calculate the vertical position (y) of the clade
-            y = tree.depths(clade)  # Call the depths method to get the vertical position
+            y = depths.get(clade,0)  # Call the depths method to get the vertical position
             
             # Annotate with branch length and confidence value
             ax.annotate(f'{clade.confidence:.2f}', xy=(x, y), 
-                        xytext=(x + 0.1, y),  # Adjust the position of the text annotation
+                        xytext=(x, y),  # Adjust the position of the text annotation
                         arrowprops=dict(facecolor='black', arrowstyle="->"))
         else:
             # Optionally, annotate with a default value if confidence is None
             ax.annotate('No support', xy=(x, y), 
-                        xytext=(x + 0.1, y), 
+                        xytext=(x, y), 
                         arrowprops=dict(facecolor='black', arrowstyle="->"))
     
     # Show the plot with the annotations
