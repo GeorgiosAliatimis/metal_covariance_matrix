@@ -34,7 +34,7 @@ def scale_tree_branch_lengths(tree, mutation_rate):
             node.edge_length *= mutation_rate
 
 
-def generate_sequences(tree, seq_length=100, model="Jukes-Cantor", mutation_rate=1):
+def generate_sequences(tree, seq_length=100, model="Jukes-Cantor", mutation_rate=1, seed=None):
     """
     Simulates nucleotide sequences along a phylogenetic tree using Pyvolve.
 
@@ -61,15 +61,10 @@ def generate_sequences(tree, seq_length=100, model="Jukes-Cantor", mutation_rate
     evolving_tree = pyvolve.Evolver(tree=tree_pyvolve, partitions=partition)
 
     # Run simulation (in-memory)
-    evolving_tree(seqfile=None)
+    evolving_tree(seqfile=None, ratefile=None, infofile=None, seed=seed)
 
     # Extract simulated sequences
     sequences = evolving_tree.get_sequences()
-
-    # Clean up Pyvolve output files (created even with seqfile=None)
-    for fname in ["site_rates_info.txt", "site_rates.txt"]:
-        if os.path.exists(fname):
-            os.remove(fname)
 
     return sequences
 

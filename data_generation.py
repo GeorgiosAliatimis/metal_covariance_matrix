@@ -6,6 +6,7 @@ import os
 
 num_gene_trees = 1000
 num_sites_per_gene = 100
+mutation_rate = 0.1
 
 dir_name = "gene_data"
 
@@ -20,11 +21,11 @@ species_tree = generate_species_tree(ntax=10,tree_depth = 1,normalize = True, rn
 species_tree.write(path=f"{dir_name}/species_tree.nex",schema = "nexus")
 
 #Generate gene trees from the species tree
-gene_trees = [generate_gene_tree_from_species_tree(species_tree, normalize = False) for _ in range(num_gene_trees)] 
+gene_trees = [generate_gene_tree_from_species_tree(species_tree, normalize = False, rng = random.Random(i)) for i in range(num_gene_trees)] 
 gene_trees = dendropy.TreeList(gene_trees)
 gene_trees.write(path=f"{dir_name}/gene_trees.nex", schema = "nexus")
 
 #Generate a fasta file of the concatenated sequences of gene trees
 generate_concatenated_fasta_file_from_gene_trees(trees = gene_trees, \
                         output_filepath = f"{dir_name}/concatenated_seq_alignment.fasta", \
-                        seq_length = num_sites_per_gene)
+                        seq_length = num_sites_per_gene, mutation_rate = mutation_rate, seed=42)
