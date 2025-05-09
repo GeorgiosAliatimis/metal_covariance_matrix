@@ -47,7 +47,7 @@ def compute_covariance_matrix(tree, mutation_rate=1, sites_per_gene=100):
     Parameters
     ----------
     tree : Bio.Phylo.BaseTree.Tree
-        A rooted, ultrametric phylogenetic tree.
+        A rooted, ultrametric phylogenetic tree created from concatenated hamming distances (METAL estimate).
     mutation_rate : float
         Substitution rate per unit branch length.
     sites_per_gene : int
@@ -85,9 +85,16 @@ def compute_covariance_matrix(tree, mutation_rate=1, sites_per_gene=100):
             M[idx1, idx2] = value
             M[idx2, idx1] = value
 
+    def hd_to_coalescent_distance(d):
+        return max(-3/4 / mu * ( np.log(1+8/3*mu) + np.log(1-4/3*d)),0) if d < 3/4 else float("inf")
+        
+    def tree_distance(x,y):
+        #Returns distance in coalescent units (not HD as tree.distance does)
+        return hd_to_coalescent_distance(tree.distance(x,y))
+
     def two_leaves(pair):
         index = pair_index[pair]
-        S_ab = 2 * tree.distance(*pair)
+        S_ab = tree_distance(*pair)
 
         variance = (4 * mu**2 * np.exp(-2 * mu * S_ab)) / ((1 + 4 * mu) * (1 + 2 * mu)**2)
         e_ab_ab = np.exp(-mu * S_ab) / (1 + 2 * mu)
@@ -99,9 +106,9 @@ def compute_covariance_matrix(tree, mutation_rate=1, sites_per_gene=100):
 
     def three_leaves(triplet):
         a, b, c = triplet
-        S_ab = 2 * tree.distance(a, b)
-        S_ac = 2 * tree.distance(a, c)
-        S_bc = 2 * tree.distance(b, c)
+        S_ab = tree_distance(a, b)
+        S_ac = tree_distance(a, c)
+        S_bc = tree_distance(b, c)
 
         tau = (S_ac - S_ab) / 2
         factor1 = (4 * mu**2) / ((1 + 2*mu)**2 * (1 + 4*mu) * (3 + 4*mu))
@@ -133,12 +140,12 @@ def compute_covariance_matrix(tree, mutation_rate=1, sites_per_gene=100):
         a, b, c, d = quartet
         K = sites_per_gene
 
-        S_ab = 2 * tree.distance(a, b)
-        S_ac = 2 * tree.distance(a, c)
-        S_ad = 2 * tree.distance(a, d)
-        S_bc = 2 * tree.distance(b, c)
-        S_bd = 2 * tree.distance(b, d)
-        S_cd = 2 * tree.distance(c, d)
+        S_ab = tree_distance(a, b)
+        S_ac = tree_distance(a, c)
+        S_ad = tree_distance(a, d)
+        S_bc = tree_distance(b, c)
+        S_bd = tree_distance(b, d)
+        S_cd = tree_distance(c, d)
         Delta = S_ad
 
         def correction(S1, S2):
