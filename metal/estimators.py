@@ -34,11 +34,32 @@ def sequences_from_fasta(fasta_filepath):
         sequences[record.id.strip()] = seq
         lengths.add(len(seq))
 
-    if len(lengths) != 1:
+    if len(lengths) == 0:
+        raise ValueError("No sequences found in the FASTA file.")
+    if len(lengths) > 1:
         raise ValueError("Not all sequences are the same length.")
 
     return sequences
 
+def get_sequence_length(fasta_filepath):
+    """
+    Determines the length of sequences in a FASTA file, ensuring all sequences are the same length.
+
+    Parameters:
+        fasta_filepath (str): Path to the input FASTA file.
+
+    Returns:
+        int: Length of the sequences in the FASTA file.
+    """
+
+    lengths = set()
+    for record in SeqIO.parse(fasta_filepath, "fasta"):
+        lengths.add(len(record.seq))
+    if len(lengths) == 0:
+        raise ValueError("No sequences found in the FASTA file.")
+    if len(lengths) > 1:
+        raise ValueError("Not all sequences are the same length.")
+    return lengths.pop()
 
 def hamming_distance_from_sequences(sequences):
     """
@@ -213,7 +234,7 @@ def metal_bootstrap_estimators(fasta_filepath, n_bootstraps, output_filepath="./
     return trees, dist_matrices
 
 
-def multivariate_normal_bootstrap_estimators(fasta_filepath, n_bootstraps, output_filepath="./boot_trees_mvt.tre", **kwargs):
+def multivariate_normal_bootstrap_estimators(fasta_filepath, n_bootstraps, output_filepath="./boot_trees_mvt.tre", sites_per_gene = 100, **kwargs):
     """
     Generates trees by sampling distance matrices from a multivariate normal distribution.
 
@@ -241,9 +262,12 @@ def multivariate_normal_bootstrap_estimators(fasta_filepath, n_bootstraps, outpu
     metal_tree = Phylo.read(tmp_file.name, "newick")
     os.remove(tmp_file.name)
     labels = [term.name for term in metal_tree.get_terminals()]
+    labels.sort()
 
     N = dist_matrix.shape[0]
-    sigma, _, _ = compute_covariance_matrix(metal_tree, **kwargs)
+    sigma, _, _ = compute_covariance_matrix(metal_tree, sites_per_gene = sites_per_gene, **kwargs)
+    n_bases = get_sequence_length(fasta_filepath)
+    sigma *= sites_per_gene / n_bases
     mu = dist_matrix[np.triu_indices(N, k=1)]
     samples = np.random.multivariate_normal(mu, sigma, size=n_bootstraps)
 
