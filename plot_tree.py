@@ -47,3 +47,39 @@ def plot_tree_with_support(tree_filepath, axes = None):
                         xytext=(x, y), 
                         arrowprops=dict(facecolor='black', arrowstyle="->"))
     
+def print_tree(node, indent="", is_last=True, show_support=True, show_lengths=True):
+    """
+    Recursively prints a DendroPy tree in ASCII format.
+
+    Parameters:
+        node (dendropy.Node): The current node.
+        indent (str): String used for indenting the current level.
+        is_last (bool): Whether this node is the last child.
+        show_support (bool): Whether to show support values on internal nodes.
+        show_lengths (bool): Whether to show edge (branch) lengths.
+    """
+    connector = "└── " if is_last else "├── "
+
+    # Build label
+    if node.is_leaf():
+        label = node.taxon.label
+    else:
+        if show_support and node.label:
+            label = f"[{node.label}]"
+        else:
+            label = "*"
+
+    # Add branch length if enabled
+    if show_lengths and node.edge_length is not None:
+        label += f" :{node.edge_length:.5f}"
+
+    print(indent + connector + label)
+
+    # Prepare next indentation
+    indent += "    " if is_last else "│   "
+
+    # Recurse on children
+    children = node.child_nodes()
+    for i, child in enumerate(children):
+        print_tree(child, indent, is_last=(i == len(children) - 1),
+                       show_support=show_support, show_lengths=show_lengths)
