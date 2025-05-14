@@ -1,10 +1,10 @@
-from data_generation.tree_sims import generate_species_tree, generate_gene_tree_from_species_tree
-from data_generation.dna_seq_generation import generate_concatenated_fasta_file_from_gene_trees
+from data_generation.tree_sims import TreeSimulator
+from data_generation.dna_seq_generation import SequenceSimulator
 import random
 import dendropy
 import os 
 
-num_gene_trees = 1000
+num_gene_trees = 500
 num_sites_per_gene = 100
 mutation_rate = 0.1
 
@@ -16,16 +16,20 @@ if dir_name not in os.listdir("."):
 # Fix seed
 rng = random.Random(0)
 
-#Generate the species tree
-species_tree = generate_species_tree(ntax=10,tree_depth = 1,normalize = True, rng=rng)
-species_tree.write(path=f"{dir_name}/species_tree.nex",schema = "nexus")
+simulator = TreeSimulator(ntax=10, tree_depth=1.0, rng=rng)
 
-#Generate gene trees from the species tree
-gene_trees = [generate_gene_tree_from_species_tree(species_tree, normalize = False, rng = random.Random(i)) for i in range(num_gene_trees)] 
-gene_trees = dendropy.TreeList(gene_trees)
-gene_trees.write(path=f"{dir_name}/gene_trees.nex", schema = "nexus")
+# Generate species tree
+simulator.generate_species_tree()
+simulator.get_species_tree().write(path=f"{dir_name}/species_tree.nex", schema="nexus")
+
+# Generate gene trees
+gene_trees = simulator.generate_multiple_gene_trees(num_gene_trees)
+gene_trees.write(path=f"{dir_name}/gene_trees.nex", schema="nexus")
+
 
 #Generate a fasta file of the concatenated sequences of gene trees
-generate_concatenated_fasta_file_from_gene_trees(trees = gene_trees, \
-                        output_filepath = f"{dir_name}/concatenated_seq_alignment.fasta", \
-                        seq_length = num_sites_per_gene, mutation_rate = mutation_rate, seed=42)
+
+simulator = SequenceSimulator(seq_length=num_sites_per_gene, mutation_rate=mutation_rate, seed=42)
+
+# Concatenated FASTA from multiple gene trees
+simulator.write_concatenated(gene_trees, f"{dir_name}/concatenated_seq_alignment.fasta")
