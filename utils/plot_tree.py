@@ -41,13 +41,11 @@ def plot_tree_with_support(tree_filepath, axes = None):
             axes.annotate(f'{clade.confidence:.2f}', xy=(x, y), 
                         xytext=(x, y),  # Adjust the position of the text annotation
                         arrowprops=dict(facecolor='black', arrowstyle="->"))
-        else:
-            # Optionally, annotate with a default value if confidence is None
-            axes.annotate('No support', xy=(x, y), 
-                        xytext=(x, y), 
-                        arrowprops=dict(facecolor='black', arrowstyle="->"))
+
+def print_tree(tree, show_support=True, show_lengths=True):
+    print_tree_helper(tree.seed_node, show_support = show_support, show_lengths=show_lengths)
     
-def print_tree(node, indent="", is_last=True, show_support=True, show_lengths=True):
+def print_tree_helper(node, indent="", is_last=True, show_support=True, show_lengths=True):
     """
     Recursively prints a DendroPy tree in ASCII format.
 
@@ -72,7 +70,7 @@ def print_tree(node, indent="", is_last=True, show_support=True, show_lengths=Tr
     # Add branch length if enabled
     if show_lengths and node.edge_length is not None:
         label += f" :{node.edge_length:.5f}"
-
+        
     print(indent + connector + label)
 
     # Prepare next indentation
@@ -81,5 +79,5 @@ def print_tree(node, indent="", is_last=True, show_support=True, show_lengths=Tr
     # Recurse on children
     children = node.child_nodes()
     for i, child in enumerate(children):
-        print_tree(child, indent, is_last=(i == len(children) - 1),
+        print_tree_helper(child, indent, is_last=(i == len(children) - 1),
                        show_support=show_support, show_lengths=show_lengths)
