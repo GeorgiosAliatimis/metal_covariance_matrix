@@ -1,20 +1,26 @@
 import io 
 from Bio import Phylo 
 import matplotlib.pyplot as plt
+import dendropy
 
-def plot_dendropy_tree(tree):
+def plot_dendropy_tree(tree, **kwargs):
     newick_tree = tree.as_string("newick")
     handle = io.StringIO(newick_tree)
     tree = Phylo.read(handle, "newick")
-    Phylo.draw(tree)
+    Phylo.draw(tree, **kwargs)
+
+def plot_tree_file(tree_filepath, schema, **kwargs):
+    tree = dendropy.Tree.get(path=tree_filepath,schema=schema)
+    plot_dendropy_tree(tree, **kwargs)
 
 
-def plot_tree_with_support(tree_filepath):
+def plot_tree_with_support(tree_filepath, axes = None):
     tree = Phylo.read(tree_filepath, "newick")
-    fig, ax = plt.subplots(figsize=(10, 10))
+    if axes is None:
+        fig, axes = plt.subplots(figsize=(10, 10))
     
     # Plot the tree without showing it yet
-    Phylo.draw(tree, do_show=False, axes=ax)
+    Phylo.draw(tree, do_show=False, axes=axes)
 
     depths = tree.depths()
     
@@ -32,14 +38,12 @@ def plot_tree_with_support(tree_filepath):
             y = depths.get(clade,0)  # Call the depths method to get the vertical position
             
             # Annotate with branch length and confidence value
-            ax.annotate(f'{clade.confidence:.2f}', xy=(x, y), 
+            axes.annotate(f'{clade.confidence:.2f}', xy=(x, y), 
                         xytext=(x, y),  # Adjust the position of the text annotation
                         arrowprops=dict(facecolor='black', arrowstyle="->"))
         else:
             # Optionally, annotate with a default value if confidence is None
-            ax.annotate('No support', xy=(x, y), 
+            axes.annotate('No support', xy=(x, y), 
                         xytext=(x, y), 
                         arrowprops=dict(facecolor='black', arrowstyle="->"))
     
-    # Show the plot with the annotations
-    plt.show()
