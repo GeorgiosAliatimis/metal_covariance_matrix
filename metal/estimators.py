@@ -129,10 +129,6 @@ def get_tree_from_dissimilarities(dist_matrix, labels=None):
         UPGMA tree.
     """
 
-    #Avoid having long terminal branches
-    nonzero = dist_matrix > 0
-    min_nonzero = dist_matrix[nonzero].min()
-
     N = dist_matrix.shape[0]
     if labels is None:
         labels = [chr(ord('a') + i) for i in range(N)]
@@ -140,7 +136,7 @@ def get_tree_from_dissimilarities(dist_matrix, labels=None):
     taxa = dendropy.TaxonNamespace(labels)
 
     with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp:
-        np.savetxt(tmp.name, dist_matrix - min_nonzero, delimiter=",")
+        np.savetxt(tmp.name, dist_matrix, delimiter=",")
         tmp.seek(0)
         pdm = dendropy.PhylogeneticDistanceMatrix.from_csv(
             tmp,
