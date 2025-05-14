@@ -16,20 +16,20 @@ if dir_name not in os.listdir("."):
 # Fix seed
 rng = random.Random(0)
 
-simulator = TreeSimulator(ntax=10, tree_depth=1.0, rng=rng)
+tree_sim = TreeSimulator(ntax=10, tree_depth=1.0, rng=rng)
 
 # Generate species tree
-simulator.generate_species_tree()
-simulator.get_species_tree().write(path=f"{dir_name}/species_tree.nex", schema="nexus")
+tree_sim.generate_species_tree()
+tree_sim.get_species_tree().write(path=f"{dir_name}/species_tree.nex", schema="nexus")
 
 # Generate gene trees
-gene_trees = simulator.generate_multiple_gene_trees(num_gene_trees)
+gene_trees = tree_sim.generate_multiple_gene_trees(num_gene_trees)
 gene_trees.write(path=f"{dir_name}/gene_trees.nex", schema="nexus")
 
 
 #Generate a fasta file of the concatenated sequences of gene trees
 
-simulator = SequenceSimulator(seq_length=num_sites_per_gene, mutation_rate=mutation_rate, seed=42)
+seq_sim = SequenceSimulator(seq_length=num_sites_per_gene, mutation_rate=mutation_rate, seed=42)
 
 # Concatenated FASTA from multiple gene trees
-simulator.write_concatenated(gene_trees, f"{dir_name}/concatenated_seq_alignment.fasta")
+seq_sim.write_concatenated(gene_trees, f"{dir_name}/concatenated_seq_alignment.fasta")
