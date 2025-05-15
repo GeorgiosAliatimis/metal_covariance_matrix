@@ -1,7 +1,6 @@
 from metal import Metal 
 from utils.plot_tree import plot_tree_from_file, print_tree
-from split_frequencies import compute_split_frequencies
-from utils.treetools import save_trees
+from utils.treetools import save_trees, compute_split_frequencies
 import matplotlib.pyplot as plt
 
 fasta_filepath = "gene_data/concatenated_seq_alignment.fasta"
