@@ -1,7 +1,5 @@
-from data_generation.tree_sims import TreeSimulator
-from data_generation.dna_seq_generation import SequenceSimulator
+from data_generation import TreeSimulator, SequenceSimulator
 import random
-import dendropy
 import os 
 
 num_gene_trees = 500
@@ -16,7 +14,7 @@ if dir_name not in os.listdir("."):
 # Fix seed
 rng = random.Random(0)
 
-tree_sim = TreeSimulator(ntax=10, tree_depth=1.0, rng=rng)
+tree_sim = TreeSimulator(ntax=10, tree_diameter=1.0, rng=rng)
 
 # Generate species tree
 tree_sim.generate_species_tree()
