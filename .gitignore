@@ -6,3 +6,4 @@ venv/
 *.nex
 *.fasta
 *.png
+.ipynb_checkpoints/
