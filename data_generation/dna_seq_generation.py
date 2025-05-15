@@ -3,6 +3,7 @@ import os
 from tqdm import tqdm
 from collections import defaultdict
 
+from utils.treetools import scale_tree
 class SequenceSimulator:
     """
     A utility class to simulate nucleotide sequences along phylogenetic trees using Pyvolve,
@@ -30,16 +31,14 @@ class SequenceSimulator:
         self.mutation_rate = mutation_rate
         self.seed = seed
 
-    def scale_tree(self, tree):
+    def _scale_tree(self, tree):
         """
         Scale all branch lengths of a given tree by the mutation rate.
 
         Args:
             tree (dendropy.Tree): The input tree whose branch lengths are to be scaled.
         """
-        for node in tree.preorder_node_iter():
-            if node.edge_length is not None:
-                node.edge_length *= self.mutation_rate
+        scale_tree(tree, self.mutation_rate)
 
     def simulate(self, tree):
         """
@@ -51,7 +50,7 @@ class SequenceSimulator:
         Returns:
             dict: A dictionary mapping taxon labels to simulated DNA sequences.
         """
-        self.scale_tree(tree)
+        self._scale_tree(tree)
         newick_str = tree.as_string(schema="newick").replace("[&R]", "")
         tree_pyvolve = pyvolve.read_tree(tree=newick_str)
         model = pyvolve.Model("nucleotide", {"rate_matrix": "JC"})

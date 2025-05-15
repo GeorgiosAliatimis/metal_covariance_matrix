@@ -1,7 +1,7 @@
 import dendropy
 from dendropy.simulate import treesim
 import numpy as np
-
+from utils.treetools import rescale_tree_to_diameter
 
 class TreeSimulator:
     """
@@ -9,29 +9,15 @@ class TreeSimulator:
 
     Attributes:
         ntax (int): Number of taxa for the species tree.
-        tree_depth (float): Depth to which species tree is scaled.
+        tree_diameter (float): Diameter to which species tree is scaled.
         rng (random.Random): Random number generator for reproducibility.
     """
 
-    def __init__(self, ntax=10, tree_depth=1.0, rng=None):
+    def __init__(self, ntax=10, tree_diameter=1.0, rng=None):
         self.ntax = ntax
-        self.tree_depth = tree_depth
+        self.tree_diameter = tree_diameter
         self.rng = rng or np.random.default_rng()
         self.species_tree = None
-
-    def _scale_tree(self, tree):
-        """
-        Internal: Scales tree to have root-to-leaf depth equal to `self.tree_depth`.
-        """
-        T = tree.taxon_namespace
-        D = tree.phylogenetic_distance_matrix()
-        D = np.array([[D(i, j) for j in T] for i in T])
-        D /= D.max()
-        D *= self.tree_depth
-        distances = {T[i]: {T[j]: D[i, j] for j in range(len(T))} for i in range(len(T))}
-        pdm = dendropy.PhylogeneticDistanceMatrix()
-        pdm.compile_from_dict(distances=distances, taxon_namespace=T)
-        return pdm.upgma_tree()
 
     def generate_species_tree(self):
         """
@@ -42,14 +28,14 @@ class TreeSimulator:
         """
         labels = [chr(ord('a') + i) for i in range(self.ntax)]
         taxa = dendropy.TaxonNamespace(labels)
-        sp_tree = treesim.birth_death_tree(
+        self.species_tree = treesim.birth_death_tree(
             birth_rate=1,
             death_rate=0,
             num_extant_tips=self.ntax,
             taxon_namespace=taxa,
             rng=self.rng
         )
-        self.species_tree = self._scale_tree(sp_tree)
+        rescale_tree_to_diameter(self.species_tree, self.tree_diameter)
         print("Species tree generated.")
         return self.species_tree
 
@@ -89,10 +75,12 @@ class TreeSimulator:
         Returns:
             dendropy.TreeList: A list of gene trees.
         """
-        return dendropy.TreeList([
+        gene_trees = dendropy.TreeList([
             self.generate_gene_tree()
             for _ in range(n_trees)
         ])
+        print("Gene trees generated.")
+        return gene_trees
 
     def reset(self):
         """
