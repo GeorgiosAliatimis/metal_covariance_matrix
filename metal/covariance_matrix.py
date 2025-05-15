@@ -1,7 +1,7 @@
 import itertools
 import numpy as np
 
-def order_triplet(triplet, tree, tol=1e-8):
+def order_triplet(triplet, tree_distance, tol=1e-8):
     """
     Given `triplet` = [a, b, c] (leaf names) and a Biopython `tree`,
     return a permutation [x, y, z] such that:
@@ -9,9 +9,9 @@ def order_triplet(triplet, tree, tol=1e-8):
     within numerical tolerance `tol`.
     """
     a, b, c = triplet
-    d_ab = tree.distance(a, b)
-    d_ac = tree.distance(a, c)
-    d_bc = tree.distance(b, c)
+    d_ab = tree_distance(a, b)
+    d_ac = tree_distance(a, c)
+    d_bc = tree_distance(b, c)
 
     if abs(d_ab - d_ac) < tol and d_bc <= d_ab:
         return [b, c, a]
@@ -22,16 +22,16 @@ def order_triplet(triplet, tree, tol=1e-8):
 
     raise ValueError(f"Triplet {triplet!r} does not satisfy dist(x,y) ≤ dist(x,z)==dist(y,z)")
 
-def classify_and_order_quartet(quartet, tree, tol=1e-8):
+def classify_and_order_quartet(quartet, tree_distance, tol=1e-8):
     """
     Classify a quartet of leaf names as either 'comb' or 'cherry',
     returning the classification and ordered list [x, y, z, w].
     """
     pairs = list(itertools.combinations(quartet, 2))
-    x, y = min(pairs, key=lambda p: tree.distance(*p))
+    x, y = min(pairs, key=lambda p: tree_distance(*p))
     z, w = [leaf for leaf in quartet if leaf not in (x, y)]
 
-    distance_diff = tree.distance(x, w) - tree.distance(x, z)
+    distance_diff = tree_distance(x, w) - tree_distance(x, z)
 
     if abs(distance_diff) < tol:
         return "cherry", [x, y, z, w]
@@ -40,14 +40,15 @@ def classify_and_order_quartet(quartet, tree, tol=1e-8):
     else:
         return "comb", [x, y, w, z]
 
-def compute_covariance_matrix(tree, mutation_rate=1, sites_per_gene=100):
+def compute_covariance_matrix(dist_matrix, mutation_rate=1, sites_per_gene=100):
     """
     Compute a covariance matrix for a phylogenetic tree under a mutation model.
 
     Parameters
     ----------
-    tree : Bio.Phylo.BaseTree.Tree
-        A rooted, ultrametric phylogenetic tree created from concatenated hamming distances (METAL estimate).
+    dist_matrix : np.ndarray
+        A square matrix of shape (N, N) representing pairwise distances
+        between N sequences or taxa based on the METAL estimate.
     mutation_rate : float
         Substitution rate per unit branch length.
     sites_per_gene : int
@@ -55,42 +56,28 @@ def compute_covariance_matrix(tree, mutation_rate=1, sites_per_gene=100):
 
     Returns
     -------
-    M : np.ndarray
+    sigma : np.ndarray
         Covariance matrix of shape (N, N) for N = C(m, 2).
-    leaf_pairs : list of tuple
-        List of leaf name pairs corresponding to row/col indices in M.
-    pair_index : dict
-        Mapping from (leaf1, leaf2) -> matrix index.
     """
     mu = mutation_rate
-    leaves = [clade.name for clade in tree.get_terminals()]
+    N = dist_matrix.shape[0]
+    leaves = list(range(N))
     
-    if any(name is None for name in leaves):
-        raise ValueError("All terminal nodes must have names for covariance computation.")
-
-    if len(leaves) < 4:
-        raise ValueError("Tree must have at least 4 leaves to compute full covariance matrix.")
-
-    leaves.sort()
     leaf_pairs = list(itertools.combinations(leaves, 2))
     pair_index = { (x, y): i for i, (x, y) in enumerate(leaf_pairs) }
     pair_index.update({ (y, x): i for (x, y), i in pair_index.items() })
 
-    M = np.zeros((len(leaf_pairs), len(leaf_pairs)))
+    sigma = np.zeros((len(leaf_pairs), len(leaf_pairs)))
 
     def insert_covariance_components(combinations):
         for (p1, p2, value) in combinations:
             idx1 = pair_index[p1]
             idx2 = pair_index[p2]
-            M[idx1, idx2] = value
-            M[idx2, idx1] = value
-
-    def hd_to_coalescent_distance(d):
-        return max(-3/4 / mu * ( np.log(1+8/3*mu) + np.log(1-4/3*d)),0) if d < 3/4 else float("inf")
+            sigma[idx1, idx2] = value
+            sigma[idx2, idx1] = value
         
-    def tree_distance(x,y):
-        #Returns distance in coalescent units (not HD as tree.distance does)
-        return hd_to_coalescent_distance(tree.distance(x,y))
+    def tree_distance(*p):
+        return dist_matrix[p]
 
     def two_leaves(pair):
         index = pair_index[pair]
@@ -200,11 +187,11 @@ def compute_covariance_matrix(tree, mutation_rate=1, sites_per_gene=100):
         two_leaves(p)
 
     for triplet in itertools.combinations(leaves, 3):
-        ordered = order_triplet(triplet, tree)
+        ordered = order_triplet(triplet, tree_distance)
         three_leaves(ordered)
 
     for quartet in itertools.combinations(leaves, 4):
-        kind, ordered = classify_and_order_quartet(quartet, tree)
+        kind, ordered = classify_and_order_quartet(quartet, tree_distance)
         four_leaves(ordered, kind)
 
-    return M, leaf_pairs, pair_index
+    return sigma
