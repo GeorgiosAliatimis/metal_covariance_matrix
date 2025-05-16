@@ -203,5 +203,9 @@ class Metal:
             mat[i, j] = mat[j, i] = v
             return mat
 
-        trees = dendropy.TreeList([self._build_tree(to_dist_matrix(sample)) for sample in samples])
+        trees = dendropy.TreeList([
+            self._build_tree(to_dist_matrix(sample))
+            for sample in tqdm(samples, desc="Gaussian sample tree reconstruction", total=n_bootstraps)
+        ])
+
         return trees
