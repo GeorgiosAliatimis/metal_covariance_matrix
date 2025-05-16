@@ -54,7 +54,7 @@ def auc_comparison(num_gene_trees = 100,
     print(f"Auc for gauss is {gauss_score:.2f}")
     return boot_score, gauss_score
 
-n_experiments = 2
+n_experiments = 100
 aucs = {key: np.zeros( (n_experiments) ) for key in ["boot","gauss"] }
 for i in range(n_experiments):
     boot_score, gauss_score = auc_comparison(ntax = 40, seed=i, mutation_rate=1)
