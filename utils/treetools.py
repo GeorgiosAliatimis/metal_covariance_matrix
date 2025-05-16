@@ -138,7 +138,7 @@ def save_trees(trees, output_path, schema):
 def rescale_tree_to_diameter(tree, target_diameter = 1):
     """Scales tree so its diameter (=2 * root-to-tip) equals target_diameter."""
     tree_diameter = 2 * tree.max_distance_from_root()
-    scale_tree(tree, 1/tree_diameter)
+    scale_tree(tree, target_diameter/tree_diameter)
 
 def scale_tree(tree, factor):
     """Multiplies all branch lengths by a constant factor."""
