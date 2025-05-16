@@ -4,6 +4,25 @@ from io import StringIO
 from Bio import Phylo
 from collections import defaultdict
 from typing import Dict, FrozenSet, Optional, Set
+import string
+
+
+def excel_style_labels(n):
+    # Produces n labels; 'a' → 'z', then 'aa', 'ab', etc.
+    # Used for taxon naming in tree simulations
+    labels = list()
+    for i in range(n):
+        label = ''
+        q = i
+        while True:
+            q, r = divmod(q, 26)
+            label = string.ascii_lowercase[r] + label
+            if q == 0:
+                break
+            q -= 1
+        labels.append(label)
+    return labels
+
 
 def tree_from_distance_matrix(D, labels = None):
     """
@@ -25,7 +44,7 @@ def tree_from_distance_matrix(D, labels = None):
         corresponding to the input distances.
     """
     if labels is None:
-        labels = [chr(ord('a') + i) for i in range(N)]
+        labels = excel_style_labels(D.shape[0])
     labels.sort()
     T = dendropy.TaxonNamespace(labels)
     distances = {

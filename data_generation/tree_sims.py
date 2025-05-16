@@ -1,7 +1,7 @@
 import dendropy
 from dendropy.simulate import treesim
 import numpy as np
-from utils.treetools import rescale_tree_to_diameter
+from utils.treetools import rescale_tree_to_diameter, excel_style_labels
 
 class TreeSimulator:
     """
@@ -26,7 +26,7 @@ class TreeSimulator:
         Returns:
             dendropy.Tree: A species tree with `ntax` tips.
         """
-        labels = [chr(ord('a') + i) for i in range(self.ntax)]
+        labels = excel_style_labels(self.ntax)
         taxa = dendropy.TaxonNamespace(labels)
         self.species_tree = treesim.birth_death_tree(
             birth_rate=1,
