@@ -8,3 +8,4 @@ venv/
 *.png
 .ipynb_checkpoints/
 scripts/
+*.npy
