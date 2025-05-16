@@ -3,6 +3,7 @@ import numpy as np
 from io import StringIO
 from Bio import Phylo
 from collections import defaultdict
+from typing import Dict, FrozenSet, Optional
 
 def tree_from_distance_matrix(D, labels = None):
     """
@@ -187,7 +188,7 @@ def get_bipartitions(tree):
 def compute_split_frequencies(
     species_tree: dendropy.Tree,
     bootstrap_trees: dendropy.TreeList,
-) -> dendropy.Tree:
+) -> dict[frozenset[str], float]:
     """
     Parameters
     ----------
@@ -195,22 +196,20 @@ def compute_split_frequencies(
         A rooted, ultrametric species tree (no support values yet).
     bootstrap_trees : dendropy.TreeList
         A list of bootstrap replicate trees.
-
+    
     Returns
     -------
-    dendropy.Tree
-        The same species_tree object, with each internal node.label set to
-        its bootstrap support frequency [0,1].
+    freqs : dict[frozenset[str], float]
+        A dictionary mapping each bipartition (split) of the phylogenetic tree to its corresponding support frequency.
+
     """
 
     # Ensure that species_tree is a deep copy of original species_tree
-    species_tree = species_tree.clone(depth=2)
     species_tree.encode_bipartitions()  # Ensure bipartitions are tracked
 
-    # 1) Compute species bipartitions
     species_bips = get_bipartitions(species_tree)
 
-    # 2) Count occurrences
+    # Count occurrences of species_bips in bootstrap trees
     counts = defaultdict(int)
     for bt in bootstrap_trees:
         bt_bips = get_bipartitions(bt)
@@ -221,11 +220,47 @@ def compute_split_frequencies(
     total = len(bootstrap_trees)
     freqs = {bip: counts[bip] / total for bip in species_bips}
 
-    # 3) Annotate species_tree internal nodes
-    for node in species_tree.internal_nodes():
-        if node == species_tree.seed_node:
-            continue
-        labels = frozenset(leaf.taxon.label for leaf in node.leaf_nodes())
-        node.label = f"{freqs.get(labels, 0.0):.3f}"
+    return freqs
 
-    return species_tree
+
+def add_labels_to_tree(
+    tree: dendropy.Tree,
+    labels: Dict[FrozenSet[str], float],
+    inplace: bool = False
+) -> Optional[dendropy.Tree]:
+    """
+    Annotates internal nodes of a DendroPy tree with user-provided labels.
+
+    Parameters
+    ----------
+    tree : dendropy.Tree
+        The input phylogenetic tree. Must be rooted and contain taxon labels.
+    
+    labels : dict[frozenset[str], float]
+        A dictionary mapping bipartitions (represented as frozensets of leaf taxon labels)
+        to label values (e.g., support values, frequencies). Each label is assigned to the
+        internal node corresponding to the bipartition.
+    
+    inplace : bool, optional
+        If True, modifies the original tree. If False (default), a deep copy of the tree is made
+        and annotated, preserving the original tree.
+
+    Returns
+    -------
+    dendropy.Tree or None
+        The annotated tree if `inplace=False`; otherwise, None.
+        The annotated tree has `node.label` set to a formatted string (e.g., "0.832")
+        for each internal node, based on the provided `labels`. The root node is not annotated.
+    """
+
+    if not inplace:
+        # Deep clone of tree
+        tree = tree.clone(depth=2)
+    for node in tree.internal_nodes():
+        if node == tree.seed_node:
+            #Skip root node (confidence is always 100%)
+            continue
+        label = frozenset(leaf.taxon.label for leaf in node.leaf_nodes())
+        node.label = f"{labels.get(label, 0.0):.3f}"
+    if not inplace:
+        return tree
