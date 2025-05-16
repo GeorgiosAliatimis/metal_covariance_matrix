@@ -7,3 +7,4 @@ venv/
 *.fasta
 *.png
 .ipynb_checkpoints/
+scripts/
