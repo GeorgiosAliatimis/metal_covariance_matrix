@@ -3,7 +3,7 @@ import numpy as np
 from io import StringIO
 from Bio import Phylo
 from collections import defaultdict
-from typing import Dict, FrozenSet, Optional
+from typing import Dict, FrozenSet, Optional, Set
 
 def tree_from_distance_matrix(D, labels = None):
     """
@@ -169,10 +169,25 @@ def convert_to_dendropy_tree(tree):
     
     return tree
 
-def get_bipartitions(tree):
+def get_bipartitions(tree: dendropy.Tree) -> Set[FrozenSet[str]]:
     """
-    Given a DendroPy Tree, return the set of bipartitions defined by its internal nodes.
-    Each bipartition is represented as a frozenset of taxon labels on one side of the cut.
+    Extracts the set of bipartitions (splits) from a DendroPy tree.
+
+    A bipartition is defined by an internal node and consists of the set of taxon labels
+    descending from that node. Only non-root internal nodes are considered, as the root 
+    trivially contains all taxa.
+
+    Parameters
+    ----------
+    tree : dendropy.Tree
+        A phylogenetic tree from which bipartitions will be extracted. The tree should have
+        its bipartitions encoded using `tree.encode_bipartitions()` if not already done.
+
+    Returns
+    -------
+    Set[FrozenSet[str]]
+        A set of bipartitions, where each bipartition is represented as a frozenset of 
+        taxon labels found on one side of the internal edge.
     """
     biparts = set()
     for node in tree.internal_nodes():
