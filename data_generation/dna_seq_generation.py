@@ -59,6 +59,21 @@ class SequenceSimulator:
         evolver(seqfile=None, ratefile=None, infofile=None, seed=self.seed)
         return evolver.get_sequences()
 
+    def simulate_concatenated(self, trees):
+        """
+        Simulate sequences from multiple trees and returns concatenated sequences.
+
+        Args:
+            trees (list of dendropy.Tree): List of gene trees to simulate gene sequences from.
+        """
+        concatenated = defaultdict(list)
+        for tree in tqdm(trees, desc="Generating & concatenating sequences"):
+            seqs = self.simulate(tree)
+            for taxon, seq in seqs.items():
+                concatenated[taxon].append(seq)
+        concatenated = {taxon: ''.join(parts) for taxon, parts in concatenated.items()}
+        return concatenated
+
     def write_fasta(self, sequences, filepath):
         """
         Write a dictionary of sequences to a FASTA file.
@@ -103,11 +118,5 @@ class SequenceSimulator:
             trees (list of dendropy.Tree): List of gene trees to simulate.
             filepath (str): Output path for the concatenated FASTA file.
         """
-        from collections import defaultdict
-        concatenated = defaultdict(list)
-        for tree in tqdm(trees, desc="Generating & concatenating sequences"):
-            seqs = self.simulate(tree)
-            for taxon, seq in seqs.items():
-                concatenated[taxon].append(seq)
-        final = {taxon: ''.join(parts) for taxon, parts in concatenated.items()}
-        self.write_fasta(final, filepath)
+        concatenated_seq = self.simulate_concatenated(trees)
+        self.write_fasta(concatenated_seq, filepath)
