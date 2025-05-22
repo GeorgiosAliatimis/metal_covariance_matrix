@@ -2,7 +2,7 @@ import pyvolve
 import os
 from tqdm import tqdm
 from collections import defaultdict
-
+import random
 from utils.treetools import scale_tree
 class SequenceSimulator:
     """
@@ -29,7 +29,7 @@ class SequenceSimulator:
         self.seq_length = seq_length
         self.model = model
         self.mutation_rate = mutation_rate
-        self.seed = seed
+        self.master_rng   = random.Random(seed)
 
     def _scale_tree(self, tree):
         """
@@ -38,7 +38,9 @@ class SequenceSimulator:
         Args:
             tree (dendropy.Tree): The input tree whose branch lengths are to be scaled.
         """
-        scale_tree(tree, self.mutation_rate)
+        tree_copy = tree.clone(depth=2)  # deep copy including edges, nodes, taxon namespace
+        scale_tree(tree_copy, self.mutation_rate)
+        return tree_copy
 
     def simulate(self, tree):
         """
@@ -50,13 +52,15 @@ class SequenceSimulator:
         Returns:
             dict: A dictionary mapping taxon labels to simulated DNA sequences.
         """
-        self._scale_tree(tree)
+        locus_seed = self.master_rng.randint(0, 2**31 - 1)
+
+        tree = self._scale_tree(tree)
         newick_str = tree.as_string(schema="newick").replace("[&R]", "")
         tree_pyvolve = pyvolve.read_tree(tree=newick_str)
         model = pyvolve.Model("nucleotide", {"rate_matrix": "JC"})
         partition = pyvolve.Partition(models=model, size=self.seq_length)
         evolver = pyvolve.Evolver(tree=tree_pyvolve, partitions=partition)
-        evolver(seqfile=None, ratefile=None, infofile=None, seed=self.seed)
+        evolver(seqfile=None, ratefile=None, infofile=None, seed=locus_seed)
         return evolver.get_sequences()
 
     def simulate_concatenated(self, trees):
