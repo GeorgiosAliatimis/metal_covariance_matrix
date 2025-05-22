@@ -9,3 +9,5 @@ venv/
 .ipynb_checkpoints/
 scripts/
 *.npy
+*.log
+*.csv
