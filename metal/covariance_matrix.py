@@ -1,5 +1,6 @@
 import itertools
 import numpy as np
+from utils.treetools import distance_matrix_from_tree
 
 def order_triplet(triplet, tree_distance, tol=1e-8):
     """
@@ -39,6 +40,10 @@ def classify_and_order_quartet(quartet, tree_distance, tol=1e-8):
         return "comb", [x, y, z, w]
     else:
         return "comb", [x, y, w, z]
+
+def compute_covariance_matrix_from_tree(tree,**kwargs):
+    dist_matrix= distance_matrix_from_tree(tree)
+    return compute_covariance_matrix(dist_matrix = dist_matrix, **kwargs)
 
 def compute_covariance_matrix(dist_matrix, mutation_rate=1, sites_per_gene=100, mode = "total"):
     """
