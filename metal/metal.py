@@ -228,6 +228,9 @@ class Metal:
             mutation_rate = mutation_rate,
             mode = "total"
         )
+        rescaling_factor = 1/sigma_total.mean()
+        sigma_coal *= rescaling_factor
+        sigma_total*= rescaling_factor
 
         def logdet(matrix):
             return np.linalg.slogdet(matrix)[1]
