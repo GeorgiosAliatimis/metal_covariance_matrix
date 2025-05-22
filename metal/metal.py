@@ -1,9 +1,7 @@
 # utils/tree_estimator.py
-import os
 import warnings
-import tempfile
 import numpy as np
-from Bio import SeqIO, Phylo
+from Bio import SeqIO
 from scipy.spatial.distance import pdist, squareform
 from tqdm import tqdm
 import dendropy
