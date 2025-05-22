@@ -206,4 +206,24 @@ def compute_covariance_matrix(dist_matrix, mutation_rate=1, sites_per_gene=100, 
 
     return sigma
 
-def uncertainty_quantification(**kwargs):
+def ratio_of_coalescent_uncertainty(**kwargs):
+    sigma_coal = compute_covariance_matrix(mode = "coal",**kwargs)
+    sigma_total = compute_covariance_matrix(mode = "total",**kwargs)
+
+    def logdet(matrix):
+        return np.linalg.slogdet(matrix)[1]
+    
+    def frobenius_norm(matrix):
+        return np.linalg.norm(matrix, ord='fro')
+    
+    def max_eigenvalue(matrix):
+        return np.linalg.eigvalsh(matrix).max()
+
+
+    metrics = {
+        "trace_ratio": sigma_coal.trace() / sigma_total.trace(),
+        "logdet_ratio": logdet(sigma_coal)/ logdet(sigma_total),
+        "frobenius_norm_ratio": frobenius_norm(sigma_coal) / frobenius_norm(sigma_total),
+    }
+
+    return metrics
