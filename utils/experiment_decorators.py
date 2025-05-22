@@ -90,6 +90,8 @@ def run_parameter_sweep(
         Changes one parameter at a time while keeping all other
         experimental parameters as default_params.
     """
+    os.makedirs(output_dir, exist_ok=True)
+
     if log_filename is not None:
         logging.basicConfig(
             filename=os.path.join(output_dir, log_filename),   
