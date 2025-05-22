@@ -108,6 +108,21 @@ class Metal:
         """
         return squareform(pdist(seq_array, metric=lambda x, y: np.mean(x != y)))
     
+    def _compute_covariance_matrix(self, mutation_rate, sites_per_gene, mode = "total"):
+        if self.metal_tree is None:
+            self.estimate_tree()
+        
+        ultrametric_hd_distances = distance_matrix_from_tree(self.metal_tree)
+        coalescent_distances = transform_hamming_to_coalescent_distances(ultrametric_hd_distances, mutation_rate)
+        sigma = compute_covariance_matrix(
+            dist_matrix=coalescent_distances, 
+            sites_per_gene=sites_per_gene, 
+            mutation_rate = mutation_rate,
+            mode = mode
+        )
+        sigma *= sites_per_gene / self.seq_len
+        return sigma
+
     def _build_tree(self, matrix):
         """
         Constructs a UPGMA tree from a distance matrix using DendroPy.
@@ -184,14 +199,8 @@ class Metal:
         dendropy.TreeList:
             Trees inferred from MVN distance matrices.
         """
-        if self.metal_tree is None:
-            self.estimate_tree()
         
-        ultrametric_hd_distances = distance_matrix_from_tree(self.metal_tree)
-        coalescent_distances = transform_hamming_to_coalescent_distances(ultrametric_hd_distances, mutation_rate)
-
-        sigma = compute_covariance_matrix(dist_matrix=coalescent_distances, sites_per_gene=sites_per_gene, mutation_rate = mutation_rate)
-        sigma *= sites_per_gene / self.seq_len
+        sigma = self._compute_covariance_matrix(sites_per_gene=sites_per_gene, mutation_rate = mutation_rate)
         mu = self.dist_matrix[np.triu_indices(self.N, k=1)]
         samples = self.rng.multivariate_normal(mu, sigma, size=n_bootstraps)
 
@@ -207,3 +216,34 @@ class Metal:
         ])
 
         return trees
+
+    def ratio_of_coalescent_uncertainty(self,sites_per_gene, mutation_rate):
+        sigma_coal = self._compute_covariance_matrix(
+            sites_per_gene=sites_per_gene, 
+            mutation_rate = mutation_rate,
+            mode = "coal"
+        )
+        sigma_total = self._compute_covariance_matrix(
+            sites_per_gene=sites_per_gene, 
+            mutation_rate = mutation_rate,
+            mode = "total"
+        )
+
+        def logdet(matrix):
+            return np.linalg.slogdet(matrix)[1]
+        
+        def frobenius_norm(matrix):
+            return np.linalg.norm(matrix, ord='fro')
+        
+        def spectral_norm(matrix):
+            return np.linalg.norm(matrix, ord=2)
+
+
+        metrics = {
+            "trace_ratio": sigma_coal.trace() / sigma_total.trace(),
+            "logdet_ratio": logdet(sigma_coal)/ logdet(sigma_total),
+            "frobenius_norm_ratio": frobenius_norm(sigma_coal) / frobenius_norm(sigma_total),
+            "spectral_norm_ratio": spectral_norm(sigma_coal) / spectral_norm(sigma_total)
+        }
+
+        return metrics
