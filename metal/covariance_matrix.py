@@ -40,7 +40,7 @@ def classify_and_order_quartet(quartet, tree_distance, tol=1e-8):
     else:
         return "comb", [x, y, w, z]
 
-def compute_covariance_matrix(dist_matrix, mutation_rate=1, sites_per_gene=100):
+def compute_covariance_matrix(dist_matrix, mutation_rate=1, sites_per_gene=100, mode = "total"):
     """
     Compute a covariance matrix for a phylogenetic tree under a mutation model.
 
@@ -78,16 +78,30 @@ def compute_covariance_matrix(dist_matrix, mutation_rate=1, sites_per_gene=100):
         
     def tree_distance(*p):
         return dist_matrix[p]
+    
+    def cov_value(coal, sub, correction):
+        # correction is product of expectations under coal model
+        # coal is covariance under coal model
+        # sub is e^{-\mu(g_{ab} + g_{cd} - \delta_{ab,cd})}
+        # cov_sub propto sub - expectation of product
+        # expectation of product = covariance + product of expecations
+        # ie coal + correction.
+        cov_coal = 9/16 * coal
+        cov_sub = 9/16 / sites_per_gene * (sub - coal - correction)
+        if mode == "total":
+            return cov_coal + cov_sub
+        elif mode == "coal":
+            return cov_coal
+        elif mode == "sub":
+            return cov_sub
 
     def two_leaves(pair):
-        index = pair_index[pair]
         S_ab = tree_distance(*pair)
 
         variance = (4 * mu**2 * np.exp(-2 * mu * S_ab)) / ((1 + 4 * mu) * (1 + 2 * mu)**2)
         e_ab_ab = np.exp(-mu * S_ab) / (1 + 2 * mu)
         correction = (np.exp(-2 * mu * S_ab)) / (1 + 2 * mu)**2
-        value = (9 * (sites_per_gene - 1) / (16 * sites_per_gene)) * variance + \
-                (9 / (16 * sites_per_gene)) * (e_ab_ab - correction)
+        value = cov_value(variance, e_ab_ab, correction)
 
         insert_covariance_components([(pair, pair, value)])
 
@@ -110,8 +124,7 @@ def compute_covariance_matrix(dist_matrix, mutation_rate=1, sites_per_gene=100):
             return np.exp(-mu * (S1 + S2)) / (1 + 2 * mu)**2
 
         def compute_value(cov, S1, S2):
-            return (9 * (sites_per_gene - 1) / (16 * sites_per_gene)) * cov + \
-                   (9 / (16 * sites_per_gene)) * (ex - correction(S1, S2))
+            return cov_value(cov, ex, correction(S1, S2))
 
         value_ab_ac = compute_value(cov_ab_ac, S_ab, S_ac)
         value_ab_bc = compute_value(cov_ab_bc, S_ab, S_bc)
@@ -125,7 +138,6 @@ def compute_covariance_matrix(dist_matrix, mutation_rate=1, sites_per_gene=100):
 
     def four_leaves(quartet, kind):
         a, b, c, d = quartet
-        K = sites_per_gene
 
         S_ab = tree_distance(a, b)
         S_ac = tree_distance(a, c)
@@ -171,10 +183,8 @@ def compute_covariance_matrix(dist_matrix, mutation_rate=1, sites_per_gene=100):
                        np.exp(-mu*(Delta + S_ac) + (Delta - S_ab)/2) * (mu*(mu+2)) / \
                        ((mu+1)**2*(2*mu+1)*(2*mu+3))
 
-        value_ab_cd = (9 * (K - 1) / (16 * K)) * cov_ab_cd + \
-                      (9 / (16 * K)) * (ex_ab_cd - correction(S_ab, S_cd))
-        value_ac_bd = (9 * (K - 1) / (16 * K)) * cov_ac_bd + \
-                      (9 / (16 * K)) * (ex_ac_bd - correction(S_ac, S_bd))
+        value_ab_cd = cov_value(cov_ab_cd, ex_ab_cd,correction(S_ab, S_cd))
+        value_ac_bd = cov_value(cov_ac_bd, ex_ac_bd,correction(S_ac, S_bd))
         value_ad_bc = value_ac_bd
 
         insert_covariance_components([
@@ -195,3 +205,5 @@ def compute_covariance_matrix(dist_matrix, mutation_rate=1, sites_per_gene=100):
         four_leaves(ordered, kind)
 
     return sigma
+
+def uncertainty_quantification(**kwargs):
