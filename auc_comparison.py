@@ -30,7 +30,7 @@ def auc_comparison(num_gene_trees: int = 100,
 
     #Generate a fasta file of the concatenated sequences of gene trees
 
-    seq_sim = SequenceSimulator(seq_length=num_sites_per_gene, mutation_rate=mutation_rate, seed=0)
+    seq_sim = SequenceSimulator(seq_length=num_sites_per_gene, mutation_rate=mutation_rate, seed=seed)
 
     sequences = seq_sim.simulate_concatenated(gene_trees)
 
