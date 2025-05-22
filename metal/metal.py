@@ -190,7 +190,7 @@ class Metal:
         ultrametric_hd_distances = distance_matrix_from_tree(self.metal_tree)
         coalescent_distances = transform_hamming_to_coalescent_distances(ultrametric_hd_distances, mutation_rate)
 
-        sigma = compute_covariance_matrix(coalescent_distances, sites_per_gene=sites_per_gene, mutation_rate = mutation_rate)
+        sigma = compute_covariance_matrix(dist_matrix=coalescent_distances, sites_per_gene=sites_per_gene, mutation_rate = mutation_rate)
         sigma *= sites_per_gene / self.seq_len
         mu = self.dist_matrix[np.triu_indices(self.N, k=1)]
         samples = self.rng.multivariate_normal(mu, sigma, size=n_bootstraps)
