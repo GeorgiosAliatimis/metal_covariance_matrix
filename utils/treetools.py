@@ -298,3 +298,18 @@ def add_labels_to_tree(
         node.label = f"{labels.get(label, 0.0):.3f}"
     if not inplace:
         return tree
+
+def rf_distance(tree1,tree2, normalize = False):
+    """
+    Computes Robinson–Foulds (RF) Distance.
+    """
+    if len(tree1.taxon_namespace) != len(tree2.taxon_namespace):
+        raise ValueError("Trees of different sizes cannot be compared.")
+    rf_dist =  dendropy.calculate.treecompare.symmetric_difference(tree1,tree2)
+
+    if normalize:
+        n_taxa = len(tree1)
+        max_rf = 2 * (n_taxa - 3)
+        rf_dist /= max_rf
+
+    return rf_dist
