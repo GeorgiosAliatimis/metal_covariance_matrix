@@ -1,4 +1,3 @@
-# utils/tree_estimator.py
 import warnings
 import numpy as np
 from Bio import SeqIO
