@@ -4,7 +4,7 @@ from Bio import SeqIO
 from scipy.spatial.distance import pdist, squareform
 from tqdm import tqdm
 import dendropy
-
+from utils.matrix_metrics import matrices_comparison
 from .covariance_matrix import compute_covariance_matrix
 from utils.treetools import tree_from_distance_matrix, distance_matrix_from_tree, transform_hamming_to_coalescent_distances
 
@@ -231,21 +231,4 @@ class Metal:
         sigma_coal *= rescaling_factor
         sigma_total*= rescaling_factor
 
-        def logdet(matrix):
-            return np.linalg.slogdet(matrix)[1]
-        
-        def frobenius_norm(matrix):
-            return np.linalg.norm(matrix, ord='fro')
-        
-        def spectral_norm(matrix):
-            return np.linalg.norm(matrix, ord=2)
-
-
-        metrics = {
-            "trace_ratio": sigma_coal.trace() / sigma_total.trace(),
-            "logdet_ratio": logdet(sigma_coal)/ logdet(sigma_total),
-            "frobenius_norm_ratio": frobenius_norm(sigma_coal) / frobenius_norm(sigma_total),
-            "spectral_norm_ratio": spectral_norm(sigma_coal) / spectral_norm(sigma_total)
-        }
-
-        return metrics
+        return matrices_comparison(sigma_coal,sigma_total)
