@@ -121,8 +121,8 @@ def compute_covariance_matrix(dist_matrix, mutation_rate=1, sites_per_gene=100, 
         factor2 = (4 * mu**2) / ((1 + 2*mu)**2 * (1 + 4*mu))
         factor3 = (8 * mu**2) / ((1 + 2*mu) * (1 + 4*mu) * (3 + 4*mu))
 
-        cov_ab_ac = cov_ab_bc = np.exp(-tau + 2 * (-mu) * S_ac) * factor1
-        cov_ac_bc = np.exp(-mu * (S_ac + S_ab)) * (factor2 - np.exp(-tau) * factor3)
+        cov_ab_ac = np.exp(-tau + 2 * (-mu) * S_ac) * factor1
+        cov_ac_bc = np.exp(-mu * (S_ac + S_bc)) * (factor2 - np.exp(-tau) * factor3)
 
         ex = np.exp(-mu * (S_ac - S_ab/2)) / ((1 + mu) * (1 + 2 * mu))
         def correction(S1, S2):
@@ -132,7 +132,7 @@ def compute_covariance_matrix(dist_matrix, mutation_rate=1, sites_per_gene=100, 
             return cov_value(cov, ex, correction(S1, S2))
 
         value_ab_ac = compute_value(cov_ab_ac, S_ab, S_ac)
-        value_ab_bc = compute_value(cov_ab_bc, S_ab, S_bc)
+        value_ab_bc = value_ab_ac
         value_ac_bc = compute_value(cov_ac_bc, S_ac, S_bc)
 
         insert_covariance_components([
@@ -162,16 +162,16 @@ def compute_covariance_matrix(dist_matrix, mutation_rate=1, sites_per_gene=100, 
             cov_ab_cd = np.exp(-mu * (S_ab + S_cd) - (tau1 + tau2)) * factor_cov
             cov_ac_bd = 1 - 2*(1+2*mu)/(3+4*mu)*(np.exp(-tau1)+np.exp(-tau2)) + \
                         (5+4*mu)*(1+2*mu)/(3+4*mu)/(3+2*mu) * np.exp(-(tau1+tau2))
-            cov_ac_bd *= (4 * mu**2 / ((1 + 4*mu)*(1 + 2*mu))) * np.exp(-2*mu * Delta)
+            cov_ac_bd *= (4 * mu**2 / ((1 + 4*mu)*(1 + 2*mu)**2)) * np.exp(-2*mu * Delta)
         else:  # comb
             tau1 = (S_ac - S_ab) / 2
             tau2 = (Delta - S_ac) / 2
             cov_ab_cd = (np.exp(-(2*mu + 1)*(tau1 + tau2)) / (3 + 4*mu)) * \
                         (1 - ((1 + 2*mu)/(3 + 2*mu)) * np.exp(-2*tau2))
-            cov_ab_cd *= (4 * mu**2 / ((1 + 4*mu)*(1 + 2*mu))) * np.exp(-mu * (Delta + S_ab))
+            cov_ab_cd *= (4 * mu**2 / ((1 + 4*mu)*(1 + 2*mu)**2)) * np.exp(-mu * (Delta + S_ab))
             cov_ac_bd = (np.exp(-(2*mu + 1)*tau2) / (3 + 4*mu)) * \
                         (1 - ((1 + 2*mu)/(3 + 2*mu)) * np.exp(-2*tau2 - tau1))
-            cov_ac_bd *= (4 * mu**2 / ((1 + 4*mu)*(1 + 2*mu))) * np.exp(-mu * (Delta + S_ac))
+            cov_ac_bd *= (4 * mu**2 / ((1 + 4*mu)*(1 + 2*mu)**2)) * np.exp(-mu * (Delta + S_ac))
 
         if kind == "cherry":
             ex_ab_cd = (np.exp(-mu * (S_ab + S_cd)) / (1 + 2*mu)**2) + \
