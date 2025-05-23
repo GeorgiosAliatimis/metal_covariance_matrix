@@ -34,14 +34,14 @@ def auc_comparison(num_gene_trees: int = 100,
 
     sequences = seq_sim.simulate_concatenated(gene_trees)
 
-    est = Metal(sequences = sequences, seed = seed)
-    est.estimate_tree()
+    metal = Metal(sequences = sequences, seed = seed)
+    metal.estimate_tree()
 
-    boot_trees = est.bootstrap_hamming(n_bootstraps = 100)
-    gauss_trees = est.gaussian_sampling(n_bootstraps = 100, mutation_rate=mutation_rate, sites_per_gene=num_sites_per_gene)
+    boot_trees = metal.bootstrap_hamming(n_bootstraps = 100)
+    gauss_trees = metal.gaussian_sampling(n_bootstraps = 100, mutation_rate=mutation_rate, sites_per_gene=num_sites_per_gene)
 
-    boot_freqs = compute_split_frequencies(est.metal_tree, boot_trees)
-    gauss_freqs = compute_split_frequencies(est.metal_tree, gauss_trees)
+    boot_freqs = compute_split_frequencies(metal.tree, boot_trees)
+    gauss_freqs = compute_split_frequencies(metal.tree, gauss_trees)
 
     true_splits = get_bipartitions(tree_sim.species_tree)
 

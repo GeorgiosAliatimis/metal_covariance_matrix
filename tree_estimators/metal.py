@@ -1,14 +1,12 @@
-import warnings
 import numpy as np
-from Bio import SeqIO
-from scipy.spatial.distance import pdist, squareform
 from tqdm import tqdm
 import dendropy
 from utils.matrix_metrics import matrices_comparison
 from .covariance_matrix import compute_covariance_matrix
-from utils.treetools import tree_from_distance_matrix, distance_matrix_from_tree, transform_hamming_to_coalescent_distances
+from utils.treetools import distance_matrix_from_tree, transform_hamming_to_coalescent_distances
+from .tree_estimator import TreeEstimator
 
-class Metal:
+class Metal(TreeEstimator):
     """
     A class to estimate the species tree from aligned DNA sequences using the METAL model.
     It also provides alternative nonparametric and parametric estimates of the species tree, 
@@ -28,90 +26,14 @@ class Metal:
     """
 
     def __init__(self, fasta_path=None, sequences=None, seed=None):
-        if fasta_path is not None:
-            if sequences is not None:
-                warnings.warn("Both fasta_path and sequences are given; sequences will be discarded and fasta_path will be used instead.")
-            self.fasta_path = fasta_path
-            self.sequences = self._load_sequences()
-        elif sequences is not None:
-            self.fasta_path = None
-            self.sequences = sequences
-        else:
-            raise ValueError("You must provide either a FASTA file path or a sequences dictionary.")
-        
-        self._validate_sequences()
-
-        self.labels = sorted(self.sequences.keys())
-        self.N = len(self.labels)
-        self.seq_len = len(next(iter(self.sequences.values())))
-        self.seq_array = self._to_array()
-        self.dist_matrix = None
-        self.metal_tree = None
+        super().__init__(fasta_path=fasta_path, sequences= sequences)
         self.rng = np.random.default_rng(seed)
     
-    def _validate_sequences(self):
-        """
-        Validates in-memory sequences for uniform length.
-
-        Raises
-        ------
-        ValueError
-            If no sequences are found or lengths are inconsistent.
-        """
-        lengths = {len(seq) for seq in self.sequences.values()}
-        if not self.sequences:
-            raise ValueError("No sequences provided.")
-        if len(lengths) > 1:
-            raise ValueError("Not all sequences are the same length.")
-
-
-    def _load_sequences(self):
-        """
-        Loads and validates sequences from the FASTA file.
-
-        Returns
-        -------
-        dict
-            Dictionary of {taxon_name: sequence}.
-        
-        Raises
-        ------
-        ValueError
-            If no sequences are found or lengths are inconsistent.
-        """
-        sequences = {}
-        for record in SeqIO.parse(self.fasta_path, "fasta"):
-            seq = str(record.seq)
-            sequences[record.id.strip()] = seq
-        return sequences
-
-    def _to_array(self):
-        """
-        Converts sequences to a character matrix for pairwise comparison.
-
-        Returns
-        -------
-        np.ndarray
-            2D array of shape (n_taxa, sequence_length).
-        """
-        return np.array([list(self.sequences[t]) for t in self.labels], dtype='<U1')
-
-    def _compute_hamming_distances(self, seq_array):
-        """
-        Computes normalized Hamming distances between all pairs of taxa.
-
-        Returns
-        -------
-        np.ndarray
-            Square distance matrix of shape (N, N).
-        """
-        return squareform(pdist(seq_array, metric=lambda x, y: np.mean(x != y)))
-    
     def _compute_covariance_matrix(self, mutation_rate, sites_per_gene, mode = "total"):
-        if self.metal_tree is None:
+        if self.tree is None:
             self.estimate_tree()
         
-        ultrametric_hd_distances = distance_matrix_from_tree(self.metal_tree)
+        ultrametric_hd_distances = distance_matrix_from_tree(self.tree)
         coalescent_distances = transform_hamming_to_coalescent_distances(ultrametric_hd_distances, mutation_rate)
         sigma = compute_covariance_matrix(
             dist_matrix=coalescent_distances, 
@@ -121,22 +43,6 @@ class Metal:
         )
         sigma *= sites_per_gene / self.seq_len
         return sigma
-
-    def _build_tree(self, matrix):
-        """
-        Constructs a UPGMA tree from a distance matrix using DendroPy.
-
-        Parameters
-        ----------
-        matrix : np.ndarray
-            Square symmetric distance matrix.
-
-        Returns
-        -------
-        dendropy.Tree
-            UPGMA tree.
-        """
-        return tree_from_distance_matrix(matrix, self.labels)
 
     def estimate_tree(self):
         """
@@ -154,8 +60,8 @@ class Metal:
         """
         if self.dist_matrix is None:
             self.dist_matrix = self._compute_hamming_distances(self.seq_array)
-        self.metal_tree = self._build_tree(self.dist_matrix)
-        return self.metal_tree
+        self.tree = self._build_tree(self.dist_matrix)
+        return self.tree
 
     def bootstrap_hamming(self, n_bootstraps):
         """

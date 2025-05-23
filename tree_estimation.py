@@ -40,12 +40,12 @@ def estimation(num_gene_trees: int = 100,
 
     metal = Metal(sequences = sequences)
     metal.estimate_tree()
-    rf_metal = rf_distance(metal.metal_tree, tree_sim.species_tree, normalize= True)
+    rf_metal = rf_distance(metal.tree, tree_sim.species_tree, normalize= True)
     
 
     glass = Glass(sequences = sequences, sites_per_gene= num_sites_per_gene)
     glass.estimate_tree()
-    rf_glass = rf_distance(glass.glass_tree, tree_sim.species_tree, normalize= True)
+    rf_glass = rf_distance(glass.tree, tree_sim.species_tree, normalize= True)
 
     sigma_coal = compute_covariance_matrix_from_tree(
         tree = tree_sim.species_tree,
