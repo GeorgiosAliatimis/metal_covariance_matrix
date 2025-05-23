@@ -1,4 +1,4 @@
-from metal import Metal 
+from tree_estimators import Metal 
 from utils.treetools import compute_split_frequencies, get_bipartitions
 from data_generation import TreeSimulator, SequenceSimulator
 import random
