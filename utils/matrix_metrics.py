@@ -1,4 +1,5 @@
 import numpy as np
+import logging
 
 def matrices_comparison(mat1, mat2):
     """
@@ -14,7 +15,8 @@ def matrices_comparison(mat1, mat2):
     def logdet(matrix):
         sign, ld = np.linalg.slogdet(matrix)
         if sign <= 0:
-            raise ValueError("Matrix must be positive-definite for log-determinant.")
+            logging.warning("Matrix must be positive-definite for log-determinant.")
+            return float("nan")
         return ld
     
     def frobenius_norm(matrix):
